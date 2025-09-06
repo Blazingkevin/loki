@@ -1,0 +1,72 @@
+name: "Example Chaos Configuration"
+description: "Sample chaos engineering scenarios for API testing"
+
+scenarios:
+  # Basic latency injection
+  - name: "random_latency"
+    description: "Add random latency to simulate network delays"
+    triggers:
+      - paths: ["*"]  # Apply to all paths
+        probability: 0.2  # 20% of requests
+    chaos:
+      latency:
+        min: "100ms"
+        max: "2s"
+        distribution: "exponential"
+
+  # Simulate service unavailability
+  - name: "service_outage"
+    description: "Simulate temporary service outages"
+    triggers:
+      - schedule: "0 */2 * * *"  # Every 2 hours
+        duration: "5m"  # Outage lasts 5 minutes
+    chaos:
+      failure_rate: 1.0  # 100% failure during outage
+      errors:
+        - code: 503
+          message: "Service Temporarily Unavailable"
+
+  # Corrupt responses for specific endpoints
+  - name: "payment_corruption"
+    description: "Corrupt payment API responses to test error handling"
+    triggers:
+      - paths: ["/v1/payments/*"]
+        probability: 0.1  # 10% of payment requests
+    chaos:
+      response_corruption:
+        - type: "remove_fields"
+          fields: ["transaction_id", "confirmation_number"]
+        - type: "malform_json"
+          probability: 0.3
+
+  # Gradual service degradation
+  - name: "memory_pressure"
+    description: "Simulate increasing response times under load"
+    triggers:
+      - condition: "request_count > 100"
+    chaos:
+      latency:
+        base: "50ms"
+        multiplier: 1.5  # Increase by 50% per trigger
+        max: "10s"
+
+  # Weekend chaos for resilience testing
+  - name: "weekend_chaos"
+    description: "Higher failure rates during low-traffic periods and engineering team is off"
+    triggers:
+      - schedule: "* * * * SAT,SUN"  # Weekends
+    chaos:
+      failure_rate: 0.3
+      errors:
+        - code: 500
+          probability: 0.6
+        - code: 502
+          probability: 0.3
+        - code: 504
+          probability: 0.1
+
+# Global settings
+settings:
+  log_level: "info"
+  metrics_enabled: true
+  dashboard_port: 8081

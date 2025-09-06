@@ -87,7 +87,7 @@ fmt:
 	@echo "💅 Formatting code..."
 	$(GOCMD) fmt ./...
 
-# Run linter (requires golangci-lint)
+# Run linter
 lint:
 	@echo "🔍 Running linter..."
 	golangci-lint run
