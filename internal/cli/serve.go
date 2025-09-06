@@ -16,26 +16,26 @@ var (
 
 var serveCommand = &cobra.Command{
 	Use:   "serve <openapi-spec>",
-	Short: "Start a mock API server from openAPI specificaton",
+	Short: "Start a mock API server from OpenAPI specification",
 	Long: `Start a mock API server that serves endpoints defined in the openAPI specification.
-	
-	The server will generate realistic responses based on schema definitions
-	and can optionally inject chaos patterns to simulate real-world failures.
 
-	Examples:
-		#Basic mock server
-		loki serve petstore.yaml
+The server will generate realistic responses based on schema definitions
+and can optionally inject chaos patterns to simulate real-world failures.
 
-		#With custom port and host
-		loki serve petstore.yaml --port 3000 --host 0.0.0.0
+Examples:
+	#Basic mock server
+	loki serve petstore.yaml
 
-		#With chaos engineering
-		loki serve petstore.yaml --chaos chaos-config.yaml 
+	#With custom port and host
+	loki serve petstore.yaml --port 3000 --host 0.0.0.0
 
-		#With specific profile
-		loki serve petstore.yaml --chaos chaos-config.yaml --profile production,
-	
-	`,
+	#With chaos engineering
+	loki serve petstore.yaml --chaos chaos-config.yaml 
+
+	#With specific profile
+	loki serve petstore.yaml --chaos chaos-config.yaml --profile production,
+
+`,
 	Args: cobra.ExactArgs(1),
 	RunE: runServe,
 }

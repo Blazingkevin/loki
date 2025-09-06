@@ -9,6 +9,7 @@
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+<img alt="codecov" src="https://codecov.io/github/Blazingkevin/loki/graph/badge.svg?token=4CMATZTJ9D">
 
 Loki is an open-source Go library and CLI tool that generates realistic mock APIs from OpenAPI specifications while introducing configurable chaos engineering patterns. Name after the Norse trickster god, Loki helps developers test application resilience against real-world API failures and network conditions.
 

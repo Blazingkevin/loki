@@ -17,7 +17,7 @@ const (
 
 var rootCmd = &cobra.Command{
 	Use:   AppName,
-	Short: "Loki: The trickster for your APIs",
+	Short: "Loki: The Trickster for Your APIs",
 	Long: fmt.Sprintf(`%s
 
 Loki is an open-source tool that generates realistic mock APIs from OpenAPI 
