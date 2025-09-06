@@ -6,7 +6,7 @@
   *The Trickster for Your APIs* 🎭
 </div>
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+[![CI](https://github.com/Blazingkevin/loki/actions/workflows/ci.yaml/badge.svg)](https://github.com/Blazingkevin/loki/actions/workflows/ci.yaml)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 <img alt="codecov" src="https://codecov.io/github/Blazingkevin/loki/graph/badge.svg?token=4CMATZTJ9D">
