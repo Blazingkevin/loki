@@ -53,5 +53,5 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.SetVersionTemplate(fmt.Sprintf("%s version %s", AppName, Version))
+	rootCmd.SetVersionTemplate(fmt.Sprintf("%s version %s\n", AppName, Version))
 }
