@@ -39,7 +39,7 @@ func formatBuildTime(buildTime string) string {
 	}
 
 	if t, err := time.Parse(time.RFC3339, buildTime); err == nil {
-		return t.Format("2025-09-06 12:00:00 MST")
+		return t.Format("2006-01-02 15:04:05 MST")
 	}
 
 	return buildTime
