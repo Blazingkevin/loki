@@ -1,4 +1,10 @@
-# Loki: API Mocking with Chaos Engineering
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Blazingkevin/loki/main/assets/loki.jpg" alt="Loki Logo" width="200" height="200">
+  
+  # Loki: API Mocking with Chaos Engineering
+  
+  *The Trickster for Your APIs* 🎭
+</div>
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
