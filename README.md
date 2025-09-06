@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Blazingkevin/loki/main/assets/loki.jpg" alt="Loki Logo" width="200" height="200">
+  <img src="https://raw.githubusercontent.com/Blazingkevin/loki/main/assets/loki-real.jpg" alt="Loki Logo" width="426" height="640">
   
   # Loki: API Mocking with Chaos Engineering
   
