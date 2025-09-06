@@ -19,7 +19,7 @@ func TestRootCommand(t *testing.T) {
 		t.Errorf("Expected Version to be %q, got %q", Version, rootCmd.Version)
 	}
 
-	expectedCommands := []string{"serve", "validate", "versio"}
+	expectedCommands := []string{"serve", "validate", "version"}
 	commands := rootCmd.Commands()
 	commandNames := make([]string, len(commands))
 
