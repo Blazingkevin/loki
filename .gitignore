@@ -1,0 +1,42 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+*.test
+
+*.out
+coverage.html
+
+bin/
+dist/
+
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Configuration files that might contain secrets
+.env
+.env.local
+
+# Go workspace file
+go.work
+go.work.sum
