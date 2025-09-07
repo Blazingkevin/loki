@@ -70,7 +70,7 @@ func (p *Parser) LoadFromURL(specUrl string) (*openapi3.T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch spec %q: %w", specUrl, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch spec from %q: HTTP %d", specUrl, resp.StatusCode)
@@ -89,7 +89,7 @@ func (p *Parser) LoadFromFile(source string) (*openapi3.T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %q: %w", source, err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(file)
 	if err != nil {
