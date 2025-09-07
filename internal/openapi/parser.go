@@ -33,7 +33,7 @@ func NewParser(opts ...ParserOption) *Parser {
 	return p
 }
 
-func WithHttpClient(client *http.Client) ParserOption {
+func WithHTTPClient(client *http.Client) ParserOption {
 	return func(p *Parser) {
 		p.client = client
 	}

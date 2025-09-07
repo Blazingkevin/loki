@@ -5,114 +5,97 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNewParser(t *testing.T) {
-	parser := NewParser()
-
-	if parser == nil {
-		t.Fatal("NewParser() returned nil")
-	}
-
-	if parser.client == nil {
-		t.Fatal("Parser client is nil")
-	}
-
-	if parser.client.Timeout != 30*time.Second {
-		t.Errorf("Expected default timeout of 30s but got %v", parser.client.Timeout)
-	}
-
-	customTimeout := 10 * time.Second
-	parser2 := NewParser(WithTimeout(customTimeout))
-	if parser2.client.Timeout != customTimeout {
-		t.Errorf("Expected timeout of %v but got %v", customTimeout, parser2.client.Timeout)
-	}
-
-	customClient := &http.Client{Timeout: 5 * time.Second}
-	parser3 := NewParser(WithHttpClient(customClient))
-	if parser3.client.Timeout != customClient.Timeout {
-		t.Errorf("Expected timeout of %v but got %v", customClient.Timeout, parser3.client.Timeout)
-	}
+type OpenAPIParserTestSuite struct {
+	suite.Suite
+	parser *Parser
 }
 
-func TestLoadSpecFromFile(t *testing.T) {
-	parser := NewParser()
+func (s *OpenAPIParserTestSuite) SetupTest() {
+	s.parser = NewParser()
+}
 
-	spec, err := parser.LoadSpec("../../test/petstore.yaml")
+func TestOpenAPIParserTestSuite(t *testing.T) {
+	suite.Run(t, new(OpenAPIParserTestSuite))
+}
 
-	if err != nil {
-		t.Errorf("Failed to load valid spec: %v", err)
-	}
+func (s *OpenAPIParserTestSuite) TestNewParser() {
+	s.Run("Creates parser with default settings", func() {
+		parser := NewParser()
 
-	if spec == nil {
-		t.Fatal("LoadSpec returned nil spec")
-	}
+		assert.NotNil(s.T(), parser)
+		assert.NotNil(s.T(), parser.client)
+		assert.Equal(s.T(), 30*time.Second, parser.client.Timeout)
+	})
 
-	if spec.Info == nil {
-		t.Error("Spec Info is nil")
-	}
+	s.Run("Creates parser with custom timeout", func() {
+		customTimeout := 10 * time.Second
+		parser := NewParser(WithTimeout(customTimeout))
 
-	if spec.Info.Title != "Sample Pet Store API" {
-		t.Errorf("Expected title 'Sample Pet Store API', got %q", spec.Info.Title)
-	}
+		assert.Equal(s.T(), customTimeout, parser.client.Timeout)
+	})
 
-	if spec.Info.Version != "1.0.0" {
-		t.Errorf("Expected version '1.0.0', got %q", spec.Info.Version)
-	}
+	s.Run("Creates parser with custom HTTP client", func() {
+		customClient := &http.Client{Timeout: 5 * time.Second}
+		parser := NewParser(WithHTTPClient(customClient))
 
-	if spec.Paths == nil || spec.Paths.Len() == 0 {
-		t.Error("No paths found in spec")
-	}
+		assert.Equal(s.T(), 5*time.Second, parser.client.Timeout)
+	})
+}
 
-	expectedPaths := []string{"/pets", "/pets/{petId}"}
-	for _, path := range expectedPaths {
-		if spec.Paths.Value(path) == nil {
-			t.Errorf("Expected path %q not found", path)
+func (s *OpenAPIParserTestSuite) TestLoadSpecFromFile() {
+	s.Run("Successfully loads valid OpenAPI spec", func() {
+		spec, err := s.parser.LoadSpec("../../test/petstore.yaml")
+
+		assert.NoError(s.T(), err)
+		assert.NotNil(s.T(), spec)
+		assert.NotNil(s.T(), spec.Info)
+		assert.Equal(s.T(), "Sample Pet Store API", spec.Info.Title)
+		assert.Equal(s.T(), "1.0.0", spec.Info.Version)
+
+		assert.NotNil(s.T(), spec.Paths)
+		assert.Greater(s.T(), spec.Paths.Len(), 0)
+
+		expectedPaths := []string{"/pets", "/pets/{petId}"}
+		for _, path := range expectedPaths {
+			assert.NotNil(s.T(), spec.Paths.Value(path), "Expected path %q not found", path)
 		}
-	}
+	})
 }
 
-func TestLoadSpecFromNonExistentFile(t *testing.T) {
-	parser := NewParser()
+func (s *OpenAPIParserTestSuite) TestLoadSpecFromNonExistentFile() {
+	s.Run("Returns error for non-existent file", func() {
+		_, err := s.parser.LoadSpec("nonexistent.yaml")
 
-	_, err := parser.LoadSpec("nonexistent.yaml")
-	if err == nil {
-		t.Error("Expected error for nonexistent file")
-	}
-
-	if !strings.Contains(err.Error(), "failed to open file") {
-		t.Errorf("Expected 'failed to open file' error, got: %v", err)
-	}
+		assert.Error(s.T(), err)
+		assert.Contains(s.T(), err.Error(), "failed to open file")
+	})
 }
 
-func TestLoadSpecFromInvalidFile(t *testing.T) {
-	parser := NewParser()
+func (s *OpenAPIParserTestSuite) TestLoadSpecFromInvalidFile() {
+	s.Run("Returns error for invalid YAML file", func() {
+		tmpDir := s.T().TempDir()
+		invalidFile := filepath.Join(tmpDir, "invalid.yaml")
 
-	tmpDir := t.TempDir()
-	invalidFile := filepath.Join(tmpDir, "invalid.yaml")
+		err := os.WriteFile(invalidFile, []byte("invalid: yaml: content: ["), 0644)
+		assert.NoError(s.T(), err, "Failed to create test file")
 
-	err := os.WriteFile(invalidFile, []byte("invalid: yaml: content: ["), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	_, err = parser.LoadSpec(invalidFile)
-	if err == nil {
-		t.Error("Expected error for invalid YAML")
-	}
-
-	if !strings.Contains(err.Error(), "failed to parse OpenAPI spec") {
-		t.Errorf("Expected 'failed to parse OpenAPI spec' error, got: %v", err)
-	}
+		_, err = s.parser.LoadSpec(invalidFile)
+		assert.Error(s.T(), err)
+		assert.Contains(s.T(), err.Error(), "failed to parse OpenAPI spec")
+	})
 }
 
-func TestLoadSpecFromURL(t *testing.T) {
-	validSpec := `openapi: 3.0.0
+func (s *OpenAPIParserTestSuite) TestLoadSpecFromURL() {
+	s.Run("Successfully loads spec from URL", func() {
+		validSpec := `openapi: 3.0.0
 info:
   title: Test API
   version: 1.0.0
@@ -124,124 +107,100 @@ paths:
           description: OK
 `
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if userAgent := r.Header.Get("User-Agent"); !strings.Contains(userAgent, "Loki-API-Mocker") {
-			t.Errorf("Expected User-Agent to contain 'Loki-API-Mocker', got: %q", userAgent)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check that proper headers are sent
+			userAgent := r.Header.Get("User-Agent")
+			assert.Contains(s.T(), userAgent, "Loki-API-Mocker")
+
+			w.Header().Set("Content-Type", "application/yaml")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(validSpec))
+			assert.NoError(s.T(), err)
+		}))
+		defer server.Close()
+
+		spec, err := s.parser.LoadSpec(server.URL)
+
+		assert.NoError(s.T(), err)
+		assert.NotNil(s.T(), spec)
+		assert.Equal(s.T(), "Test API", spec.Info.Title)
+	})
+
+	s.Run("Returns error for HTTP 404", func() {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		_, err := s.parser.LoadSpec(server.URL)
+
+		assert.Error(s.T(), err)
+		assert.Contains(s.T(), err.Error(), "HTTP 404")
+	})
+
+	s.Run("Returns error for invalid URL", func() {
+		_, err := s.parser.LoadSpec("http://nonexistent-domain-12345.com/spec.yaml")
+
+		assert.Error(s.T(), err)
+	})
+}
+
+func (s *OpenAPIParserTestSuite) TestValidateSpec() {
+	s.Run("Validates a correct OpenAPI spec", func() {
+		spec, err := s.parser.LoadSpec("../../test/petstore.yaml")
+		assert.NoError(s.T(), err)
+
+		err = s.parser.ValidateSpec(spec)
+		assert.NoError(s.T(), err)
+	})
+
+	s.Run("Returns error for invalid spec", func() {
+		spec := &openapi3.T{
+			OpenAPI: "3.0.0",
+			Paths:   openapi3.NewPaths(),
 		}
 
-		w.Header().Set("Content-Type", "application/yaml")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(validSpec)); err != nil {
-			t.Errorf("Failed to write response: %v", err)
-		}
-	}))
-	defer server.Close()
-
-	parser := NewParser()
-	spec, err := parser.LoadSpec(server.URL)
-	if err != nil {
-		t.Fatalf("Failed to load spec from URL: %v", err)
-	}
-
-	if spec.Info.Title != "Test API" {
-		t.Errorf("Expected title 'Test API', got %q", spec.Info.Title)
-	}
+		err := s.parser.ValidateSpec(spec)
+		assert.Error(s.T(), err)
+	})
 }
 
-func TestLoadSpecFromURLWithError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
+func (s *OpenAPIParserTestSuite) TestLoadAndValidate() {
+	s.Run("Successfully loads and validates spec", func() {
+		spec, err := s.parser.LoadAndValidate("../../test/petstore.yaml")
 
-	parser := NewParser()
-	_, err := parser.LoadSpec(server.URL)
-	if err == nil {
-		t.Error("Expected error for 404 response")
-	}
+		assert.NoError(s.T(), err)
+		assert.NotNil(s.T(), spec)
+	})
 
-	if !strings.Contains(err.Error(), "HTTP 404") {
-		t.Errorf("Expected 'HTTP 404' error, got: %v", err)
-	}
+	s.Run("Returns error for non-existent file", func() {
+		_, err := s.parser.LoadAndValidate("nonexistent.yaml")
+
+		assert.Error(s.T(), err)
+	})
 }
 
-func TestLoadSpecFromInvalidURL(t *testing.T) {
-	parser := NewParser()
-
-	_, err := parser.LoadSpec("http://nonexistent/spec.yaml")
-	if err == nil {
-		t.Error("Expected error for invalid URL")
-	}
-}
-
-func TestValidateSpec(t *testing.T) {
-	parser := NewParser()
-
-	spec, err := parser.LoadSpec("../../test/petstore.yaml")
-	if err != nil {
-		t.Fatalf("Failed to load spec: %v", err)
-	}
-
-	err = parser.ValidateSpec(spec)
-	if err != nil {
-		t.Errorf("Valid spec failed validation: %v", err)
-	}
-}
-
-func TestValidateInvalidSpec(t *testing.T) {
-	parser := NewParser()
-
-	spec := &openapi3.T{
-		OpenAPI: "3.0.0",
-		Paths:   openapi3.NewPaths(),
-	}
-
-	err := parser.ValidateSpec(spec)
-	if err == nil {
-		t.Error("Expected validation error for invalid spec")
-	}
-}
-
-func TestLoadAndValidate(t *testing.T) {
-	parser := NewParser()
-
-	spec, err := parser.LoadAndValidate("../../test/petstore.yaml")
-	if err != nil {
-		t.Fatalf("LoadAndValidate failed: %v", err)
-	}
-
-	if spec == nil {
-		t.Fatal("LoadAndValidate returned nil spec")
-	}
-
-	_, err = parser.LoadAndValidate("nonexistent.yaml")
-	if err == nil {
-		t.Error("Expected error for nonexistent file")
-	}
-}
-
-func TestIsURL(t *testing.T) {
+func (s *OpenAPIParserTestSuite) TestIsURL() {
 	tests := []struct {
+		name     string
 		input    string
 		expected bool
 	}{
-		{"http://example.com", true},
-		{"https://api.example.com", true},
-		{"https://api.example.com/spec.yaml", true},
-		{"ftp://example.com", false},
-		{"file.yaml", false},
-		{"./file.yaml", false},
-		{"/path/to/file.yaml", false},
-		{"", false},
-		{"not-a-url", false},
+		{"Valid HTTP URL", "http://example.com", true},
+		{"Valid HTTPS URL", "https://api.example.com", true},
+		{"Valid HTTPS URL with path", "https://api.example.com/spec.yaml", true},
+		{"FTP URL should be false", "ftp://example.com", false},
+		{"Local file", "file.yaml", false},
+		{"Relative path", "./file.yaml", false},
+		{"Absolute path", "/path/to/file.yaml", false},
+		{"Empty string", "", false},
+		{"Invalid string", "not-a-url", false},
 	}
 
-	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			result := isURL(test.input)
-			if result != test.expected {
-				t.Errorf("isURL(%q) = %v, expected %v", test.input, result, test.expected)
-			}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			result := isURL(tt.input)
+			assert.Equal(s.T(), tt.expected, result)
 		})
 	}
 }
@@ -252,24 +211,18 @@ func BenchmarkLoadSpecFromFile(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := parser.LoadSpec("../../test/petstore.yaml")
-		if err != nil {
-			b.Fatalf("LoadSpec failed: %v", err)
-		}
+		assert.NoError(b, err)
 	}
 }
 
 func BenchmarkValidateSpec(b *testing.B) {
 	parser := NewParser()
 	spec, err := parser.LoadSpec("../../test/petstore.yaml")
-	if err != nil {
-		b.Fatalf("Failed to load spec: %v", err)
-	}
+	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err := parser.ValidateSpec(spec)
-		if err != nil {
-			b.Fatalf("ValidateSpec failed: %v", err)
-		}
+		assert.NoError(b, err)
 	}
 }

@@ -4,46 +4,36 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestRootCommand(t *testing.T) {
-	if rootCmd.Use != AppName {
-		t.Errorf("Expected use to be %q, got %q", AppName, rootCmd.Use)
-	}
+type CLITestSuite struct {
+	suite.Suite
+}
 
-	if rootCmd.Short != "Loki: The Trickster for Your APIs" {
-		t.Errorf("Expected Short to be 'Loki: The Trickster for Your APIs', got %q", rootCmd.Short)
-	}
+func TestCLITestSuite(t *testing.T) {
+	suite.Run(t, new(CLITestSuite))
+}
 
-	if rootCmd.Version != Version {
-		t.Errorf("Expected Version to be %q, got %q", Version, rootCmd.Version)
-	}
+func (s *CLITestSuite) TestRootCommand() {
+	assert.Equal(s.T(), AppName, rootCmd.Use)
+	assert.Equal(s.T(), "Loki: The Trickster for Your APIs", rootCmd.Short)
+	assert.Equal(s.T(), Version, rootCmd.Version)
 
 	expectedCommands := []string{"serve", "validate", "version"}
 	commands := rootCmd.Commands()
 	commandNames := make([]string, len(commands))
-
 	for i, cmd := range commands {
 		commandNames[i] = cmd.Name()
 	}
 
 	for _, expected := range expectedCommands {
-		found := false
-
-		for _, name := range commandNames {
-			if name == expected {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			t.Errorf("Expected command %q to be registered", expected)
-		}
+		assert.Contains(s.T(), commandNames, expected, "Expected command %q to be registered", expected)
 	}
 }
 
-func TestVersionCommand(t *testing.T) {
+func (s *CLITestSuite) TestVersionCommand() {
 	var versionCmd *cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "version" {
@@ -52,20 +42,15 @@ func TestVersionCommand(t *testing.T) {
 		}
 	}
 
-	if versionCmd == nil {
-		t.Fatal("Version command not found")
-	}
+	assert.NotNil(s.T(), versionCmd, "Version command not found")
 
-	if versionCmd.Short != "Show version and build information" {
-		t.Errorf("Expected Short description for version command")
-	}
-
-	if versionCmd.Use != "version" {
-		t.Errorf("Expected Use to be 'version', got %q", versionCmd.Use)
+	if versionCmd != nil {
+		assert.Equal(s.T(), "Show version and build information", versionCmd.Short)
+		assert.Equal(s.T(), "version", versionCmd.Use)
 	}
 }
 
-func TestServeCommandValidation(t *testing.T) {
+func (s *CLITestSuite) TestServeCommandValidation() {
 	var serveCmd *cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "serve" {
@@ -74,28 +59,21 @@ func TestServeCommandValidation(t *testing.T) {
 		}
 	}
 
-	if serveCmd == nil {
-		t.Fatal("Serve command not found")
-	}
+	assert.NotNil(s.T(), serveCmd, "Serve command not found")
 
-	if serveCmd.Use != "serve <openapi-spec>" {
-		t.Errorf("Expected Use to be 'serve <openapi-spec>', got %q", serveCmd.Use)
-	}
+	if serveCmd != nil {
+		assert.Equal(s.T(), "serve <openapi-spec>", serveCmd.Use)
+		assert.Equal(s.T(), "Start a mock API server from OpenAPI specification", serveCmd.Short)
 
-	if serveCmd.Short != "Start a mock API server from OpenAPI specification" {
-		t.Errorf("Expected correct Short description for serve command")
-	}
-
-	expectedFlags := []string{"port", "host", "chaos", "profile", "log-level"}
-	for _, flagName := range expectedFlags {
-		flag := serveCmd.Flags().Lookup(flagName)
-		if flag == nil {
-			t.Errorf("Expected flag %q to be defined", flagName)
+		expectedFlags := []string{"port", "host", "chaos", "profile", "log-level"}
+		for _, flagName := range expectedFlags {
+			flag := serveCmd.Flags().Lookup(flagName)
+			assert.NotNil(s.T(), flag, "Expected flag %q to be defined", flagName)
 		}
 	}
 }
 
-func TestValidateCommandValidation(t *testing.T) {
+func (s *CLITestSuite) TestValidateCommandValidation() {
 	var validateCmd *cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "validate" {
@@ -104,15 +82,10 @@ func TestValidateCommandValidation(t *testing.T) {
 		}
 	}
 
-	if validateCmd == nil {
-		t.Fatal("Validate command not found")
-	}
+	assert.NotNil(s.T(), validateCmd, "Validate command not found")
 
-	if validateCmd.Use != "validate <openapi-spec>" {
-		t.Errorf("Expected Use to be 'validate <openapi-spec>', got %q", validateCmd.Use)
-	}
-
-	if validateCmd.Short != "Validate an OpenAPI specification" {
-		t.Errorf("Expected correct Short description for validate command")
+	if validateCmd != nil {
+		assert.Equal(s.T(), "validate <openapi-spec>", validateCmd.Use)
+		assert.Equal(s.T(), "Validate an OpenAPI specification", validateCmd.Short)
 	}
 }
