@@ -131,7 +131,9 @@ paths:
 
 		w.Header().Set("Content-Type", "application/yaml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(validSpec))
+		if _, err := w.Write([]byte(validSpec)); err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
