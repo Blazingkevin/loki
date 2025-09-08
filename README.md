@@ -7,6 +7,7 @@
 </div>
 
 [![CI](https://github.com/Blazingkevin/loki/actions/workflows/ci.yaml/badge.svg)](https://github.com/Blazingkevin/loki/actions/workflows/ci.yaml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Blazingkevin/loki)](https://goreportcard.com/report/github.com/Blazingkevin/loki)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 <img alt="codecov" src="https://codecov.io/github/Blazingkevin/loki/graph/badge.svg?token=4CMATZTJ9D">
