@@ -141,7 +141,7 @@ func (s *ServerTestSuite) TestServerStartAndShutdown() {
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/health")
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-	resp.Body.Close()
+	_ = resp.Body.Close() //nolint:errcheck
 }
 
 func (s *ServerTestSuite) TestServerHealthEndpoint() {
@@ -160,14 +160,16 @@ func (s *ServerTestSuite) TestServerHealthEndpoint() {
 	defer cancel()
 
 	go func() {
-		server.Start(ctx)
+		_ = server.Start(ctx) //nolint:errcheck
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready instead of sleeping
+	err = server.WaitForReady(ctx)
+	require.NoError(s.T(), err)
 
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/health")
 	require.NoError(s.T(), err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	assert.Equal(s.T(), "application/json", resp.Header.Get("Content-Type"))
@@ -201,14 +203,16 @@ func (s *ServerTestSuite) TestServerSpecInfoEndpoint() {
 	defer cancel()
 
 	go func() {
-		server.Start(ctx)
+		_ = server.Start(ctx) //nolint:errcheck
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready instead of sleeping
+	err = server.WaitForReady(ctx)
+	require.NoError(s.T(), err)
 
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/spec")
 	require.NoError(s.T(), err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	assert.Equal(s.T(), "application/json", resp.Header.Get("Content-Type"))

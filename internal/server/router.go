@@ -172,7 +172,7 @@ func (r *Router) handleHealth(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(health)
+	_ = json.NewEncoder(w).Encode(health) //nolint:errcheck
 }
 
 func (r *Router) handleSpecInfo(w http.ResponseWriter, req *http.Request) {
@@ -183,7 +183,7 @@ func (r *Router) handleSpecInfo(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(r.specInfo)
+	_ = json.NewEncoder(w).Encode(r.specInfo) //nolint:errcheck
 }
 
 func (r *Router) GetRegisteredRoutes() []string {

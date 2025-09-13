@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Blazingkevin/loki/internal/openapi"
@@ -27,6 +28,8 @@ type Server struct {
 	router     *Router
 	listener   net.Listener
 	logger     *slog.Logger
+	mu         sync.RWMutex
+	ready      chan struct{}
 }
 
 func New(config *Config) (*Server, error) {
@@ -53,6 +56,7 @@ func New(config *Config) (*Server, error) {
 		config: config,
 		router: router,
 		logger: logger,
+		ready:  make(chan struct{}),
 	}
 
 	return server, nil
@@ -62,8 +66,10 @@ func (s *Server) Start(ctx context.Context) error {
 	addr := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
 
 	var err error
+	s.mu.Lock()
 	s.listener, err = net.Listen("tcp", addr)
 	if err != nil {
+		s.mu.Unlock()
 		return fmt.Errorf("failed to create listener: %w", err)
 	}
 
@@ -75,6 +81,9 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	actualAddr := s.listener.Addr().String()
+	s.mu.Unlock()
+
+	close(s.ready)
 
 	s.logger.Info("🔥 Loki Mock Server Starting",
 		"addr", actualAddr,
@@ -84,7 +93,12 @@ func (s *Server) Start(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		if err := s.httpServer.Serve(s.listener); err != nil && err != http.ErrServerClosed {
+		s.mu.RLock()
+		listener := s.listener
+		httpServer := s.httpServer
+		s.mu.RUnlock()
+
+		if err := httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
 			errCh <- fmt.Errorf("server failed to start: %w", err)
 		}
 	}()
@@ -117,8 +131,19 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) Addr() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.listener == nil {
 		return ""
 	}
 	return s.listener.Addr().String()
+}
+
+func (s *Server) WaitForReady(ctx context.Context) error {
+	select {
+	case <-s.ready:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
