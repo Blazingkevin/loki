@@ -1,8 +1,15 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/Blazingkevin/loki/internal/openapi"
+	"github.com/Blazingkevin/loki/internal/server"
 	"github.com/spf13/cobra"
 )
 
@@ -43,9 +50,25 @@ Examples:
 func runServe(cmd *cobra.Command, args []string) error {
 	specFile := args[0]
 
-	fmt.Printf("🔥 Starting Lock mock server...\n")
-	fmt.Printf("📄 OpenAPI spec:%s\n", specFile)
-	fmt.Printf("🌐 Server: https://%s:%d\n", serveHost, servePort)
+	// Setup logger
+	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: parseLogLevel(logLevel),
+	})
+	logger := slog.New(logHandler)
+
+	fmt.Printf("🔥 Starting Loki mock server...\n")
+	fmt.Printf("📋 OpenAPI spec: %s\n", specFile)
+
+	parser := openapi.NewParser()
+	spec, err := parser.LoadAndValidate(specFile)
+	if err != nil {
+		fmt.Printf("Failed to load OpenAPI spec: %v\n", err)
+		return err
+	}
+
+	info := openapi.AnalyzeSpec(spec)
+
+	fmt.Printf("Loaded %s v%s (%d endpoints)\n", info.Title, info.Version, info.PathCount)
 
 	if chaosConfig != "" {
 		fmt.Printf("🎭 Chaos config: %s\n", chaosConfig)
@@ -56,11 +79,54 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("📊 Log level: %s\n", logLevel)
 
-	// TODO: Implement actual server logic
-	fmt.Println("\n⚠️  Server implementation is not yet complete.")
-	fmt.Println("This is is just CLI foundation setup.")
+	fmt.Printf("\nAvailable endpoints:\n")
+	for _, path := range info.Paths {
+		for _, method := range path.Methods {
+			fmt.Printf("  %-6s %s", method.Method, path.Path)
+			if method.Summary != "" {
+				fmt.Printf(" - %s", method.Summary)
+			}
+			fmt.Printf("\n")
+		}
+	}
 
-	return nil
+	config := &server.Config{
+		Host:     serveHost,
+		Port:     servePort,
+		Spec:     spec,
+		SpecInfo: info,
+		Logger:   logger,
+	}
+
+	srv, err := server.New(config)
+	if err != nil {
+		fmt.Printf("Failed to create server: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("🌐 Server: http://%s:%d\n", serveHost, servePort)
+	fmt.Printf("🎯 Health check: http://%s:%d/_loki/health\n", serveHost, servePort)
+	fmt.Printf("📋 Spec info: http://%s:%d/_loki/spec\n", serveHost, servePort)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return srv.Start(ctx)
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
 
 func init() {
