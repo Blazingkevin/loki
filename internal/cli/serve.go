@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -51,14 +50,14 @@ Examples:
 func runServe(cmd *cobra.Command, args []string) error {
 	specFile := args[0]
 
-	// Setup logger
-	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: parseLogLevel(logLevel),
-	})
-	logger := slog.New(logHandler)
+	// Setup logger with configured level
+	logger := server.NewLogger(logLevel, os.Stdout)
 
 	fmt.Printf("🔥 Starting Loki mock server...\n")
 	fmt.Printf("📋 OpenAPI spec: %s\n", specFile)
+	if logLevel != "" {
+		fmt.Printf("📊 Log level: %s\n", logLevel)
+	}
 
 	parser := openapi.NewParser()
 	spec, err := parser.LoadAndValidate(specFile)
@@ -78,8 +77,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("📊 Log level: %s\n", logLevel)
-
 	fmt.Printf("\nAvailable endpoints:\n")
 	for _, path := range info.Paths {
 		for _, method := range path.Methods {
@@ -91,15 +88,16 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	config := &server.Config{
+	serverConfig := &server.Config{
 		Host:     serveHost,
 		Port:     servePort,
 		Spec:     spec,
 		SpecInfo: info,
 		Logger:   logger,
+		LogLevel: logLevel,
 	}
 
-	srv, err := server.New(config)
+	srv, err := server.New(serverConfig)
 	if err != nil {
 		fmt.Printf("Failed to create server: %v\n", err)
 		return err
@@ -113,21 +111,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer stop()
 
 	return srv.Start(ctx)
-}
-
-func parseLogLevel(level string) slog.Level {
-	switch level {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
 }
 
 func init() {

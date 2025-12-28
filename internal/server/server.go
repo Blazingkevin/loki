@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
@@ -20,7 +19,8 @@ type Config struct {
 	Port     int
 	Spec     *openapi3.T
 	SpecInfo *openapi.SpecInfo
-	Logger   *slog.Logger
+	Logger   *Logger
+	LogLevel string
 }
 
 type Server struct {
@@ -28,7 +28,7 @@ type Server struct {
 	httpServer *http.Server
 	router     *Router
 	listener   net.Listener
-	logger     *slog.Logger
+	logger     *Logger
 	mu         sync.RWMutex
 	ready      chan struct{}
 }
@@ -46,18 +46,35 @@ func New(config *Config) (*Server, error) {
 		return nil, fmt.Errorf("OpenAPI spec info cannot be nil")
 	}
 
+	// Create logger with configured level
 	logger := config.Logger
 	if logger == nil {
-		logger = slog.Default()
+		logLevel := config.LogLevel
+		if logLevel == "" {
+			logLevel = "info"
+		}
+		logger = NewLogger(logLevel, nil)
 	}
 
 	router := NewRouter(config.Spec, config.SpecInfo, logger)
+
+	// Apply middleware chain
+	handler := RecoveryMiddleware(logger)(
+		CORSMiddleware(
+			LoggingMiddleware(logger)(router),
+		),
+	)
 
 	server := &Server{
 		config: config,
 		router: router,
 		logger: logger,
 		ready:  make(chan struct{}),
+	}
+
+	// Store the middleware-wrapped handler for the HTTP server
+	server.httpServer = &http.Server{
+		Handler: handler,
 	}
 
 	return server, nil
@@ -74,12 +91,10 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to create listener: %w", err)
 	}
 
-	s.httpServer = &http.Server{
-		Handler:      s.router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
+	// Update the server address (httpServer.Handler already set in New())
+	s.httpServer.ReadTimeout = 30 * time.Second
+	s.httpServer.WriteTimeout = 30 * time.Second
+	s.httpServer.IdleTimeout = 120 * time.Second
 
 	actualAddr := s.listener.Addr().String()
 	s.mu.Unlock()

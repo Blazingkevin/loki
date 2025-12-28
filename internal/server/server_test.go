@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -21,7 +20,7 @@ type ServerTestSuite struct {
 	suite.Suite
 	spec     *openapi3.T
 	specInfo *openapi.SpecInfo
-	logger   *slog.Logger
+	logger   *Logger
 }
 
 func (s *ServerTestSuite) SetupSuite() {
@@ -33,7 +32,7 @@ func (s *ServerTestSuite) SetupSuite() {
 	s.spec = spec
 	s.specInfo = openapi.AnalyzeSpec(spec)
 
-	s.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	s.logger = NewLogger("error", io.Discard)
 }
 
 func TestServerSuite(t *testing.T) {

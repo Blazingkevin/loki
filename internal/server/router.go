@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -14,11 +13,11 @@ import (
 type Router struct {
 	spec     *openapi3.T
 	specInfo *openapi.SpecInfo
-	logger   *slog.Logger
+	logger   *Logger
 	mux      *http.ServeMux
 }
 
-func NewRouter(spec *openapi3.T, specInfo *openapi.SpecInfo, logger *slog.Logger) *Router {
+func NewRouter(spec *openapi3.T, specInfo *openapi.SpecInfo, logger *Logger) *Router {
 	router := &Router{
 		spec:     spec,
 		specInfo: specInfo,
@@ -32,11 +31,8 @@ func NewRouter(spec *openapi3.T, specInfo *openapi.SpecInfo, logger *slog.Logger
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.logger.Info("📩 Request received",
-		"method", req.Method,
-		"path", req.URL.Path,
-		"remote_addr", req.RemoteAddr,
-		"user_agent", req.Header.Get("User-Agent"))
+	// Middleware chain is applied in server.go, not here
+	// This method now just delegates to the mux
 
 	r.mux.ServeHTTP(w, req)
 }
