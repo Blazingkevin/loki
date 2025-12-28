@@ -40,3 +40,5 @@ Thumbs.db
 # Go workspace file
 go.work
 go.work.sum
+ROADMAP.md
+USER_JOURNEY.md
