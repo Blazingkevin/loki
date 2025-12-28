@@ -1,0 +1,48 @@
+name: "Test Chaos Configuration"
+description: "Simple test configuration for manual testing"
+
+scenarios:
+  - name: "basic_latency"
+    description: "Add basic latency for testing"
+    enabled: true
+    triggers:
+      - paths: ["/api/*"]
+        probability: 0.3
+    chaos:
+      latency:
+        min: "50ms"
+        max: "500ms"
+        distribution: "uniform"
+
+  - name: "error_injection"
+    description: "Test error injection"
+    enabled: true
+    triggers:
+      - paths: ["/users/*"]
+        probability: 0.1
+    chaos:
+      errors:
+        - code: 500
+          message: "Internal Server Error"
+          probability: 0.6
+        - code: 503
+          message: "Service Unavailable"
+          probability: 0.4
+
+  - name: "response_corruption"
+    description: "Test response corruption"
+    enabled: false
+    triggers:
+      - paths: ["/products/*"]
+        methods: ["GET", "POST"]
+        probability: 0.2
+    chaos:
+      response_corruption:
+        - type: "remove_fields"
+          fields: ["id", "name"]
+          probability: 0.5
+
+settings:
+  log_level: "debug"
+  metrics_enabled: true
+  dashboard_port: 9090
