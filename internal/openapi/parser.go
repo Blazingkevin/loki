@@ -57,7 +57,7 @@ func (p *Parser) LoadFromURL(specUrl string) (*openapi3.T, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.client.Timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, specUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, specUrl, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http request %q: %w", specUrl, err)
 	}
@@ -70,7 +70,7 @@ func (p *Parser) LoadFromURL(specUrl string) (*openapi3.T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch spec %q: %w", specUrl, err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close() //nolint:errcheck // Body will be read before close
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch spec from %q: HTTP %d", specUrl, resp.StatusCode)
@@ -89,7 +89,7 @@ func (p *Parser) LoadFromFile(source string) (*openapi3.T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %q: %w", source, err)
 	}
-	defer file.Close() //nolint:errcheck
+	defer file.Close() //nolint:errcheck // File will be read before close
 
 	data, err := io.ReadAll(file)
 	if err != nil {

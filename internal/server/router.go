@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/Blazingkevin/loki/internal/openapi"
 	"github.com/getkin/kin-openapi/openapi3"
+
+	"github.com/Blazingkevin/loki/internal/openapi"
 )
 
 type Router struct {
@@ -120,16 +121,15 @@ func (r *Router) handleAPIEndpoint(w http.ResponseWriter, req *http.Request, pat
 
 func (r *Router) getDefaultStatusCode(methodInfo openapi.MethodInfo) int {
 	for _, code := range methodInfo.Responses {
-		if code == "200" || code == "201" || code == "202" || code == "204" {
-			statusCode := 200
-			if code == "201" {
-				statusCode = 201
-			} else if code == "202" {
-				statusCode = 202
-			} else if code == "204" {
-				statusCode = 204
-			}
-			return statusCode
+		switch code {
+		case "200":
+			return http.StatusOK
+		case "201":
+			return http.StatusCreated
+		case "202":
+			return http.StatusAccepted
+		case "204":
+			return http.StatusNoContent
 		}
 	}
 
@@ -172,7 +172,7 @@ func (r *Router) handleHealth(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(health) //nolint:errcheck
+	_ = json.NewEncoder(w).Encode(health) //nolint:errcheck // Response encoding errors are not critical for health check
 }
 
 func (r *Router) handleSpecInfo(w http.ResponseWriter, req *http.Request) {
@@ -183,14 +183,14 @@ func (r *Router) handleSpecInfo(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(r.specInfo) //nolint:errcheck
+	_ = json.NewEncoder(w).Encode(r.specInfo) //nolint:errcheck // Response encoding errors are not critical for spec info endpoint
 }
 
 func (r *Router) GetRegisteredRoutes() []string {
-	routes := []string{}
-
-	routes = append(routes, "GET /_loki/health")
-	routes = append(routes, "GET /_loki/spec")
+	routes := []string{
+		"GET /_loki/health",
+		"GET /_loki/spec",
+	}
 
 	for _, pathInfo := range r.specInfo.Paths {
 		for _, methodInfo := range pathInfo.Methods {

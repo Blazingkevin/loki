@@ -8,9 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/cobra"
+
 	"github.com/Blazingkevin/loki/internal/openapi"
 	"github.com/Blazingkevin/loki/internal/server"
-	"github.com/spf13/cobra"
 )
 
 var (

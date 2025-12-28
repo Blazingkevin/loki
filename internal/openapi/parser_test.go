@@ -84,7 +84,7 @@ func (s *OpenAPIParserTestSuite) TestLoadSpecFromInvalidFile() {
 		tmpDir := s.T().TempDir()
 		invalidFile := filepath.Join(tmpDir, "invalid.yaml")
 
-		err := os.WriteFile(invalidFile, []byte("invalid: yaml: content: ["), 0644)
+		err := os.WriteFile(invalidFile, []byte("invalid: yaml: content: ["), 0o600)
 		assert.NoError(s.T(), err, "Failed to create test file")
 
 		_, err = s.parser.LoadSpec(invalidFile)

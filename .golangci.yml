@@ -1,0 +1,87 @@
+# golangci-lint configuration for Loki
+# https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - copyloopvar        # Detects places where loop variables are copied
+    - dupl               # Code clone detection
+    - errcheck           # Check for unchecked errors
+    - gocritic           # Provides diagnostics that check for bugs, performance and style issues
+    - gocyclo            # Computes cyclomatic complexity
+    - godot              # Check if comments end in a period
+    - gosec              # Inspects source code for security problems
+    - govet              # Reports suspicious constructs
+    - ineffassign        # Detects ineffectual assignments
+    - misspell           # Finds commonly misspelled English words
+    - nakedret           # Finds naked returns in functions
+    - nonamedreturns     # Reports all named returns
+    - prealloc           # Finds slice declarations that could potentially be pre-allocated
+    - revive             # Fast, configurable, extensible, flexible, and beautiful linter
+    - staticcheck        # Go static analysis
+    - unconvert          # Remove unnecessary type conversions
+    - unused             # Checks for unused constants, variables, functions and types
+    - bodyclose          # Checks whether HTTP response body is closed successfully
+    - errorlint          # Find code that will cause problems with error wrapping
+    
+  settings:
+    dupl:
+      threshold: 150
+      
+    gocritic:
+      disabled-checks:
+        - wrapperFunc
+        - hugeParam
+        - rangeValCopy
+        - unnamedResult
+      enabled-tags:
+        - performance
+        - style
+        - diagnostic
+        
+    misspell:
+      locale: US
+      
+    revive:
+      confidence: 0.1
+      
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        text: G107  # URL provided as taint input
+      - linters:
+          - gosec
+        text: G404  # Use of weak random number generator (ok for mocking)
+      - linters:
+          - govet
+        text: 'printf:'
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Blazingkevin/loki
+        
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - third_party$
+      - builtin$

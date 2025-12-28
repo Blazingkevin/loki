@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Blazingkevin/loki/internal/openapi"
 	"github.com/getkin/kin-openapi/openapi3"
+
+	"github.com/Blazingkevin/loki/internal/openapi"
 )
 
 type Config struct {

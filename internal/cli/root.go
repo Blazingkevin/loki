@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	// current version of loki
+	// current version of loki.
 	Version = "v1.0.0-dev"
 
 	AppName = "loki"

@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Blazingkevin/loki/internal/openapi"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/Blazingkevin/loki/internal/openapi"
 )
 
 type ServerTestSuite struct {
@@ -141,7 +142,7 @@ func (s *ServerTestSuite) TestServerStartAndShutdown() {
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/health")
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-	_ = resp.Body.Close() //nolint:errcheck
+	_ = resp.Body.Close() //nolint:errcheck // Test cleanup, error not critical
 }
 
 func (s *ServerTestSuite) TestServerHealthEndpoint() {
@@ -160,7 +161,7 @@ func (s *ServerTestSuite) TestServerHealthEndpoint() {
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx) //nolint:errcheck
+		_ = server.Start(ctx) //nolint:errcheck // Server error handling tested elsewhere
 	}()
 
 	// Wait for server to be ready instead of sleeping
@@ -169,7 +170,7 @@ func (s *ServerTestSuite) TestServerHealthEndpoint() {
 
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/health")
 	require.NoError(s.T(), err)
-	defer func() { _ = resp.Body.Close() }() //nolint:errcheck
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // Server error handling tested elsewhere
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	assert.Equal(s.T(), "application/json", resp.Header.Get("Content-Type"))
@@ -203,7 +204,7 @@ func (s *ServerTestSuite) TestServerSpecInfoEndpoint() {
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx) //nolint:errcheck
+		_ = server.Start(ctx) //nolint:errcheck // Server error handling tested elsewhere
 	}()
 
 	// Wait for server to be ready instead of sleeping
@@ -212,7 +213,7 @@ func (s *ServerTestSuite) TestServerSpecInfoEndpoint() {
 
 	resp, err := http.Get("http://" + server.Addr() + "/_loki/spec")
 	require.NoError(s.T(), err)
-	defer func() { _ = resp.Body.Close() }() //nolint:errcheck
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // Server error handling tested elsewhere
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	assert.Equal(s.T(), "application/json", resp.Header.Get("Content-Type"))
