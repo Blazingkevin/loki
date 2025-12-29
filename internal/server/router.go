@@ -7,22 +7,38 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 
+	"github.com/Blazingkevin/loki/internal/config"
+	"github.com/Blazingkevin/loki/internal/generator"
 	"github.com/Blazingkevin/loki/internal/openapi"
 )
 
 type Router struct {
-	spec     *openapi3.T
-	specInfo *openapi.SpecInfo
-	logger   *Logger
-	mux      *http.ServeMux
+	spec      *openapi3.T
+	specInfo  *openapi.SpecInfo
+	logger    *Logger
+	mux       *http.ServeMux
+	generator *generator.Generator
 }
 
-func NewRouter(spec *openapi3.T, specInfo *openapi.SpecInfo, logger *Logger) *Router {
+func NewRouter(spec *openapi3.T, specInfo *openapi.SpecInfo, logger *Logger, chaosConfig interface{}) *Router {
+	gen := generator.NewGenerator()
+
+	// Configure generator with chaos config if available
+	if cfg, ok := chaosConfig.(*config.Config); ok && cfg != nil {
+		if cfg.FieldMapping != nil {
+			gen.SetFieldMapping(cfg.FieldMapping)
+		}
+		if cfg.TypeMapping != nil {
+			gen.SetTypeMapping(cfg.TypeMapping)
+		}
+	}
+
 	router := &Router{
-		spec:     spec,
-		specInfo: specInfo,
-		logger:   logger,
-		mux:      http.NewServeMux(),
+		spec:      spec,
+		specInfo:  specInfo,
+		logger:    logger,
+		mux:       http.NewServeMux(),
+		generator: gen,
 	}
 
 	router.registerRoutes()
@@ -90,16 +106,31 @@ func (r *Router) handleAPIEndpoint(w http.ResponseWriter, req *http.Request, pat
 		return
 	}
 
-	// TODO: Implement proper response generation from the OpenAPI schemas
-	response := map[string]interface{}{
-		"message":      "Loki mock response",
-		"method":       methodInfo.Method,
-		"path":         pathInfo.Path,
-		"operation_id": methodInfo.OperationID,
-		"timestamp":    "2024-09-07T12:00:00Z",
-	}
-
+	// Get the operation from the spec
+	operation := r.getOperation(pathInfo.Path, methodInfo.Method)
 	statusCode := r.getDefaultStatusCode(methodInfo)
+
+	// Try to generate response from schema
+	var response interface{}
+	if operation != nil {
+		schema := r.getResponseSchema(operation, statusCode)
+		if schema != nil {
+			// Wrap schema in SchemaRef
+			schemaRef := &openapi3.SchemaRef{Value: schema}
+			generatedResp, err := r.generator.GenerateResponse(schemaRef)
+			if err != nil {
+				r.logger.Warn("⚠️ Failed to generate response from schema, using fallback",
+					"error", err)
+				response = r.createFallbackResponse(methodInfo, pathInfo)
+			} else {
+				response = generatedResp
+			}
+		} else {
+			response = r.createFallbackResponse(methodInfo, pathInfo)
+		}
+	} else {
+		response = r.createFallbackResponse(methodInfo, pathInfo)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -113,6 +144,94 @@ func (r *Router) handleAPIEndpoint(w http.ResponseWriter, req *http.Request, pat
 	r.logger.Info("📤 Response sent",
 		"status_code", statusCode,
 		"content_type", "application/json")
+}
+
+// createFallbackResponse creates a simple fallback response when schema generation fails
+func (r *Router) createFallbackResponse(methodInfo openapi.MethodInfo, pathInfo openapi.PathInfo) map[string]interface{} {
+	return map[string]interface{}{
+		"message":      "Loki mock response",
+		"method":       methodInfo.Method,
+		"path":         pathInfo.Path,
+		"operation_id": methodInfo.OperationID,
+		"timestamp":    "2024-09-07T12:00:00Z",
+	}
+}
+
+// getOperation retrieves the operation from the spec
+func (r *Router) getOperation(path, method string) *openapi3.Operation {
+	if r.spec == nil || r.spec.Paths == nil {
+		return nil
+	}
+
+	pathItem := r.spec.Paths.Find(path)
+	if pathItem == nil {
+		return nil
+	}
+
+	switch method {
+	case "GET":
+		return pathItem.Get
+	case "POST":
+		return pathItem.Post
+	case "PUT":
+		return pathItem.Put
+	case "PATCH":
+		return pathItem.Patch
+	case "DELETE":
+		return pathItem.Delete
+	case "HEAD":
+		return pathItem.Head
+	case "OPTIONS":
+		return pathItem.Options
+	default:
+		return nil
+	}
+}
+
+// getResponseSchema retrieves the response schema for a given status code
+func (r *Router) getResponseSchema(operation *openapi3.Operation, statusCode int) *openapi3.Schema {
+	if operation == nil || operation.Responses == nil {
+		r.logger.Debug("❌ No operation or responses", "has_operation", operation != nil)
+		return nil
+	}
+
+	// Try the specific status code first
+	statusCodeStr := fmt.Sprintf("%d", statusCode)
+	responseRef := operation.Responses.Status(statusCode)
+	if responseRef == nil {
+		r.logger.Debug("⚠️ No response for status code, trying default", "status_code", statusCodeStr)
+		// Try default response
+		responseRef = operation.Responses.Default()
+	}
+
+	if responseRef == nil || responseRef.Value == nil {
+		r.logger.Debug("❌ No response ref or value", "has_ref", responseRef != nil)
+		return nil
+	}
+
+	// Get the response content for application/json
+	content := responseRef.Value.Content
+	if content == nil {
+		r.logger.Debug("❌ No content in response")
+		return nil
+	}
+
+	mediaType := content.Get("application/json")
+	if mediaType == nil {
+		r.logger.Debug("❌ No application/json media type")
+		return nil
+	}
+
+	if mediaType.Schema == nil || mediaType.Schema.Value == nil {
+		r.logger.Debug("❌ No schema or schema value", "has_schema", mediaType.Schema != nil)
+		return nil
+	}
+
+	r.logger.Debug("✅ Using response schema",
+		"status_code", statusCodeStr,
+		"schema_type", mediaType.Schema.Value.Type)
+
+	return mediaType.Schema.Value
 }
 
 func (r *Router) getDefaultStatusCode(methodInfo openapi.MethodInfo) int {

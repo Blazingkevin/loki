@@ -1,0 +1,76 @@
+name: "Petstore Realistic Data Config"
+description: "Chaos config with realistic data generation for petstore API"
+
+# Field mapping: map specific field names to faker types
+field_mapping:
+  name: "person.name"        # Use person names for 'name' field
+  breed: "animal.breed"      # Use animal breeds for 'breed' field
+  email: "internet.email"
+  phone: "phone.number"
+  address: "address.street"
+  street: "address.street"
+  city: "address.city"
+  state: "address.state"
+  country: "address.country"
+  zipcode: "address.zipcode"
+  username: "internet.username"
+  description: "lorem.sentence"
+  title: "lorem.word"
+  company: "company.name"
+  website: "internet.url"
+
+# Type mapping: map OpenAPI formats to faker types
+type_mapping:
+  email: "internet.email"
+  uri: "internet.url"
+  hostname: "internet.domain"
+
+scenarios:
+  - name: basic_latency
+    description: "Add basic latency for testing"
+    enabled: true
+    triggers:
+      - paths:
+          - "/pets"
+          - "/pets/*"
+        probability: 0.5
+    chaos:
+      latency:
+        min: "50ms"
+        max: "200ms"
+        distribution: "uniform"
+
+  - name: error_injection
+    description: "Test error injection"
+    enabled: true
+    triggers:
+      - paths:
+          - "/pets"
+          - "/pets/*"
+        probability: 0.3
+    chaos:
+      errors:
+        - code: 500
+          message: "Internal Server Error"
+          probability: 0.5
+        - code: 503
+          message: "Service Unavailable"
+          probability: 0.5
+
+  - name: response_corruption
+    description: "Test response corruption"
+    enabled: false
+    triggers:
+      - paths:
+          - "/pets"
+        probability: 0.2
+    chaos:
+      response_corruption:
+        - type: "remove_fields"
+          fields: ["id"]
+          probability: 1.0
+
+settings:
+  log_level: "info"
+  metrics_enabled: false
+  dashboard_port: 9090

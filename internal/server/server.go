@@ -58,7 +58,7 @@ func New(config *Config) (*Server, error) {
 		logger = NewLogger(logLevel, nil)
 	}
 
-	router := NewRouter(config.Spec, config.SpecInfo, logger)
+	router := NewRouter(config.Spec, config.SpecInfo, logger, config.ChaosConfig)
 
 	// Build middleware chain
 	var handler http.Handler = router

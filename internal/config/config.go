@@ -10,10 +10,12 @@ import (
 
 // Config represents the main configuration structure.
 type Config struct {
-	Name        string     `yaml:"name"`
-	Description string     `yaml:"description"`
-	Scenarios   []Scenario `yaml:"scenarios"`
-	Settings    Settings   `yaml:"settings"`
+	Name         string            `yaml:"name"`
+	Description  string            `yaml:"description"`
+	Scenarios    []Scenario        `yaml:"scenarios"`
+	Settings     Settings          `yaml:"settings"`
+	FieldMapping map[string]string `yaml:"field_mapping"` // Map field names to faker types
+	TypeMapping  map[string]string `yaml:"type_mapping"`  // Map schema types/formats to faker types
 }
 
 // Scenario represents a chaos engineering scenario.
