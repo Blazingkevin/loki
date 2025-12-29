@@ -6,20 +6,20 @@ scenarios:
     description: "Add basic latency for testing"
     enabled: true
     triggers:
-      - paths: ["/api/*"]
-        probability: 0.3
+      - paths: ["/pets", "/pets/*"]
+        probability: 0.5
     chaos:
       latency:
         min: "50ms"
-        max: "500ms"
+        max: "200ms"
         distribution: "uniform"
 
   - name: "error_injection"
     description: "Test error injection"
     enabled: true
     triggers:
-      - paths: ["/users/*"]
-        probability: 0.1
+      - paths: ["/pets", "/pets/*"]
+        probability: 0.3
     chaos:
       errors:
         - code: 500
@@ -33,7 +33,7 @@ scenarios:
     description: "Test response corruption"
     enabled: false
     triggers:
-      - paths: ["/products/*"]
+      - paths: ["/pets", "/pets/*"]
         methods: ["GET", "POST"]
         probability: 0.2
     chaos:

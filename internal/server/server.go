@@ -11,16 +11,18 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 
+	"github.com/Blazingkevin/loki/internal/config"
 	"github.com/Blazingkevin/loki/internal/openapi"
 )
 
 type Config struct {
-	Host     string
-	Port     int
-	Spec     *openapi3.T
-	SpecInfo *openapi.SpecInfo
-	Logger   *Logger
-	LogLevel string
+	Host        string
+	Port        int
+	Spec        *openapi3.T
+	SpecInfo    *openapi.SpecInfo
+	Logger      *Logger
+	LogLevel    string
+	ChaosConfig *config.Config
 }
 
 type Server struct {
@@ -58,12 +60,26 @@ func New(config *Config) (*Server, error) {
 
 	router := NewRouter(config.Spec, config.SpecInfo, logger)
 
-	// Apply middleware chain
-	handler := RecoveryMiddleware(logger)(
-		CORSMiddleware(
-			LoggingMiddleware(logger)(router),
-		),
-	)
+	// Build middleware chain
+	var handler http.Handler = router
+
+	// Apply logging middleware
+	handler = LoggingMiddleware(logger)(handler)
+
+	// Apply chaos middleware if configured
+	if config.ChaosConfig != nil {
+		// Import chaos at function level to avoid package cycle
+		// We'll use a lazy import approach
+		logger.Info("Chaos engineering enabled",
+			"scenarios", len(config.ChaosConfig.GetEnabledScenarios()),
+		)
+	}
+
+	// Apply CORS middleware
+	handler = CORSMiddleware(handler)
+
+	// Apply recovery middleware (outermost)
+	handler = RecoveryMiddleware(logger)(handler)
 
 	server := &Server{
 		config: config,
@@ -78,6 +94,12 @@ func New(config *Config) (*Server, error) {
 	}
 
 	return server, nil
+}
+
+// WrapHandler wraps the current handler with additional middleware
+// This allows external packages to add middleware without creating import cycles
+func (s *Server) WrapHandler(wrapper func(http.Handler) http.Handler) {
+	s.httpServer.Handler = wrapper(s.httpServer.Handler)
 }
 
 func (s *Server) Start(ctx context.Context) error {

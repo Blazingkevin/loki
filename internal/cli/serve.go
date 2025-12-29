@@ -9,6 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Blazingkevin/loki/internal/chaos"
+	"github.com/Blazingkevin/loki/internal/config"
 	"github.com/Blazingkevin/loki/internal/openapi"
 	"github.com/Blazingkevin/loki/internal/server"
 )
@@ -70,10 +72,34 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Loaded %s v%s (%d endpoints)\n", info.Title, info.Version, info.PathCount)
 
+	// Load chaos configuration if provided
+	var chaosConf *config.Config
 	if chaosConfig != "" {
 		fmt.Printf("🎭 Chaos config: %s\n", chaosConfig)
 		if profile != "" {
 			fmt.Printf("📊 Chaos profile: %s\n", profile)
+		}
+
+		chaosConf, err = config.Load(chaosConfig)
+		if err != nil {
+			fmt.Printf("Failed to load chaos config: %v\n", err)
+			return err
+		}
+
+		// Validate chaos configuration
+		validationErrors := chaosConf.Validate()
+		if len(validationErrors) > 0 {
+			fmt.Printf("Invalid chaos configuration:\n")
+			for _, ve := range validationErrors {
+				fmt.Printf("  • %s: %s\n", ve.Field, ve.Message)
+			}
+			return fmt.Errorf("chaos configuration validation failed")
+		}
+
+		enabledScenarios := chaosConf.GetEnabledScenarios()
+		fmt.Printf("✅ Loaded %d enabled chaos scenarios\n", len(enabledScenarios))
+		for _, scenario := range enabledScenarios {
+			fmt.Printf("  • %s: %s\n", scenario.Name, scenario.Description)
 		}
 	}
 
@@ -89,18 +115,26 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}
 
 	serverConfig := &server.Config{
-		Host:     serveHost,
-		Port:     servePort,
-		Spec:     spec,
-		SpecInfo: info,
-		Logger:   logger,
-		LogLevel: logLevel,
+		Host:        serveHost,
+		Port:        servePort,
+		Spec:        spec,
+		SpecInfo:    info,
+		Logger:      logger,
+		LogLevel:    logLevel,
+		ChaosConfig: chaosConf,
 	}
 
 	srv, err := server.New(serverConfig)
 	if err != nil {
 		fmt.Printf("Failed to create server: %v\n", err)
 		return err
+	}
+
+	// Apply chaos middleware if chaos config is loaded
+	if chaosConf != nil {
+		chaosEngine := chaos.NewEngine(chaosConf)
+		srv.WrapHandler(chaos.Middleware(chaosEngine, logger))
+		fmt.Printf("🎭 Chaos engineering activated!\n")
 	}
 
 	fmt.Printf("🌐 Server: http://%s:%d\n", serveHost, servePort)
